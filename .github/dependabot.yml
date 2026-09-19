@@ -19,3 +19,6 @@ updates:
       # Held on 16.x: GraphQL Armor depends on graphql 16, and two copies break the schema.
       - dependency-name: graphql
         update-types: [version-update:semver-major]
+      # Held to the Node.js major in .node-version, so types never describe APIs the runtime lacks.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
