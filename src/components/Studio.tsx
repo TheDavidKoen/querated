@@ -23,7 +23,10 @@ import { type BeamHandle, TransmissionBeam } from "./TransmissionBeam";
 
 type Run = {
   id: number;
+  options: QueryOptions;
   sent: BuiltQuery;
+  // The startCursor of every page before this one, so Previous returns to exactly those works.
+  history: string[];
   landed: boolean;
   outcome: QueryOutcome | null;
 };
@@ -53,6 +56,11 @@ function problemWith({ search, from, to }: QueryOptions): string | null {
   }
   if (from !== null && to !== null && from > to) return "From must not be later than To.";
   return null;
+}
+
+function onScreen(element: HTMLElement): boolean {
+  const rect = element.getBoundingClientRect();
+  return rect.bottom > 0 && rect.top < window.innerHeight;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -86,6 +94,7 @@ function bringIntoView(element: HTMLElement): Promise<void> {
 export function Studio({ departments }: { departments: DepartmentOption[] }) {
   const [options, setOptions] = useState<QueryOptions>(DEFAULT_QUERY_OPTIONS);
   const [run, setRun] = useState<Run | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
   const query = useMemo(() => buildQuery(options), [options]);
   const reducedMotion = useReducedMotion();
 
@@ -102,8 +111,10 @@ export function Studio({ departments }: { departments: DepartmentOption[] }) {
   const phase = phaseOf(run);
   const busy = phase === "sending" || phase === "building";
 
+  // Any change to the query starts again from the first page.
   const update = (patch: Partial<QueryOptions>) => {
-    setOptions((current) => ({ ...current, ...patch }));
+    setOptions((current) => ({ ...current, ...patch, after: null }));
+    setHistory([]);
   };
 
   const fly = contextSafe(async () => {
@@ -131,7 +142,11 @@ export function Studio({ departments }: { departments: DepartmentOption[] }) {
     }
   });
 
-  const send = async (target: QueryOptions = options) => {
+  const send = async (
+    target: QueryOptions = options,
+    earlier: string[] = history,
+    flight = true,
+  ) => {
     if (busy || problemWith(target) !== null) return;
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -143,10 +158,12 @@ export function Studio({ departments }: { departments: DepartmentOption[] }) {
     const settle = (patch: Partial<Run>) =>
       setRun((current) => (current?.id === id ? { ...current, ...patch } : current));
 
-    setRun({ id, sent, landed: reducedMotion, outcome: null });
+    const animate = flight && !reducedMotion;
+    setRun({ id, options: target, sent, history: earlier, landed: !animate, outcome: null });
     const response = sendQuery(sent, controller.signal).catch(() => null);
 
-    if (reducedMotion) {
+    galleryRef.current?.scrollTo({ top: 0 });
+    if (!animate) {
       galleryRef.current?.scrollIntoView({ block: "start" });
     } else {
       await fly();
@@ -157,11 +174,34 @@ export function Studio({ departments }: { departments: DepartmentOption[] }) {
     if (outcome) settle({ outcome });
   };
 
-  // The preview must show the cleared query before it flies, so the state update is flushed first.
+  // The preview must show the query before it flies, so the state update is flushed first.
+  const applyAndSend = (next: QueryOptions, earlier: string[], flight = true) => {
+    flushSync(() => {
+      setOptions(next);
+      setHistory(earlier);
+    });
+    void send(next, earlier, flight);
+  };
+
   const clearAndSend = (argumentNames: string[]) => {
-    const next = Object.assign({ ...options }, ...argumentNames.map((name) => CLEARED[name]));
-    flushSync(() => setOptions(next));
-    void send(next);
+    const cleared = argumentNames.map((name) => CLEARED[name]);
+    applyAndSend(Object.assign({ ...options, after: null }, ...cleared), []);
+  };
+
+  // Pages follow the query that was sent, not unsent edits. The query only flies when it is on
+  // screen, so browsing never scrolls away from the gallery.
+  const turnPage = (direction: "previous" | "next") => {
+    const pageInfo = run?.outcome?.data?.artworks?.pageInfo;
+    if (!run || !pageInfo) return;
+    const flight = previewRef.current ? onScreen(previewRef.current) : false;
+    if (direction === "next" && pageInfo.endCursor) {
+      const earlier = [...run.history, pageInfo.startCursor];
+      applyAndSend({ ...run.options, after: pageInfo.endCursor }, earlier, flight);
+    }
+    if (direction === "previous" && run.history.length > 0) {
+      const after = run.history.at(-1) ?? null;
+      applyAndSend({ ...run.options, after }, run.history.slice(0, -1), flight);
+    }
   };
 
   return (
@@ -184,6 +224,8 @@ export function Studio({ departments }: { departments: DepartmentOption[] }) {
           outcome={run?.outcome ?? null}
           variables={run?.sent.variables ?? null}
           runId={run?.id ?? 0}
+          page={(run?.history.length ?? 0) + 1}
+          onPage={turnPage}
           animate={!reducedMotion}
           departments={departments}
           onClear={clearAndSend}

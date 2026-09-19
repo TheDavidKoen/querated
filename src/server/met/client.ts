@@ -27,7 +27,8 @@ export class MetUnavailableError extends Error {
   override name = "MetUnavailableError";
 }
 
-type CacheEntry = { body: unknown; bytes: number };
+// `missing` holds the reason when The Met answered 404, which is cached like any other answer.
+type CacheEntry = { body: unknown; bytes: number; missing?: string };
 
 type MetClientOptions = {
   fetch?: typeof fetch;
@@ -91,6 +92,15 @@ export function createMetClient(options: MetClientOptions = {}): MetClient {
 
   let refusedUntil = 0;
 
+  function reasonFor(error: unknown): string {
+    if (error instanceof MetUnavailableError) return error.message;
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      return `No answer within ${timeoutMs / 1000} seconds.`;
+    }
+    if (error instanceof SyntaxError) return "The Met answered with something other than JSON.";
+    return "The request did not reach the Met.";
+  }
+
   async function getJson(
     url: string,
     kind: UpstreamCallKind,
@@ -99,15 +109,36 @@ export function createMetClient(options: MetClientOptions = {}): MetClient {
   ): Promise<unknown> {
     const hit = cache.get(url);
     if (hit) {
-      trace.record({ kind, label, cached: true, ok: hit.body !== null, bytes: hit.bytes, ms: 0 });
+      trace.record({
+        kind,
+        label,
+        cached: true,
+        ok: hit.missing === undefined,
+        bytes: hit.bytes,
+        ms: 0,
+        ...(hit.missing && { failure: { url, reason: hit.missing } }),
+      });
       return hit.body;
     }
 
     const started = performance.now();
     const elapsed = () => Math.round(performance.now() - started);
+    const failed = (reason: string, bytes = 0) =>
+      trace.record({
+        kind,
+        label,
+        cached: false,
+        ok: false,
+        bytes,
+        ms: elapsed(),
+        failure: { url, reason },
+      });
+
     try {
       if (Date.now() < refusedUntil) {
-        throw new MetUnavailableError(`The Met is refusing calls, so the ${kind} call was skipped`);
+        throw new MetUnavailableError(
+          "Not sent. The Met refused an earlier call, so calls pause for a minute.",
+        );
       }
       const { status, text } = await limit(async () => {
         const response = await fetchJson(url, {
@@ -120,16 +151,19 @@ export function createMetClient(options: MetClientOptions = {}): MetClient {
 
       // The Met answers 404 for withdrawn object IDs that search can still return.
       if (status === 404) {
-        cache.set(url, { body: null, bytes }, { ttl: HOUR });
-        trace.record({ kind, label, cached: false, ok: false, bytes, ms: elapsed() });
+        const missing = "404 Not Found. The Met no longer publishes this record.";
+        cache.set(url, { body: null, bytes, missing }, { ttl: HOUR });
+        failed(missing, bytes);
         return null;
       }
       if (status === 403 || status === 429) {
         refusedUntil = Date.now() + BACKOFF_MS;
-        throw new MetUnavailableError(`The Met refused the ${kind} call with ${status}`);
+        throw new MetUnavailableError(
+          `${status} from the Met's firewall, so calls pause for a minute.`,
+        );
       }
       if (status < 200 || status >= 300) {
-        throw new MetUnavailableError(`The Met answered ${status} for ${kind}`);
+        throw new MetUnavailableError(`${status} from the Met.`);
       }
 
       const body: unknown = JSON.parse(text);
@@ -137,9 +171,10 @@ export function createMetClient(options: MetClientOptions = {}): MetClient {
       trace.record({ kind, label, cached: false, ok: true, bytes, ms: elapsed() });
       return body;
     } catch (error) {
-      trace.record({ kind, label, cached: false, ok: false, bytes: 0, ms: elapsed() });
+      const reason = reasonFor(error);
+      failed(reason);
       if (error instanceof MetUnavailableError) throw error;
-      throw new MetUnavailableError(`The Met did not answer the ${kind} call`, { cause: error });
+      throw new MetUnavailableError(reason, { cause: error });
     }
   }
 

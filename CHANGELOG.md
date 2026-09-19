@@ -4,6 +4,17 @@ All notable changes to Querated are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Cursor pagination: `after` and `pageInfo` on `artworks`, with Previous and Next in the gallery
+- The exact request and failure reason for every failed upstream call, shown in a bubble on hover or focus
+
+### Changed
+
+- Every page checks up to three batches before settling for fewer works, with or without a search term
+
 ## [0.1.0] - 2026-09-18
 
 ### Added

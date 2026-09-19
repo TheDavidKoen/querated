@@ -1,5 +1,11 @@
 export type UpstreamCallKind = "search" | "object" | "departments";
 
+// Only failed calls carry their request, so the trace stays small when everything works.
+export type UpstreamFailure = {
+  url: string;
+  reason: string;
+};
+
 export type UpstreamCall = {
   id: number;
   kind: UpstreamCallKind;
@@ -8,6 +14,7 @@ export type UpstreamCall = {
   ok: boolean;
   bytes: number;
   ms: number;
+  failure?: UpstreamFailure;
 };
 
 export type QueryTrace = {

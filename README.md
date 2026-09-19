@@ -11,11 +11,11 @@ ones the cache answered, and how many bytes GraphQL saved.
 
 | Area | Behaviour |
 |---|---|
-| Studio | Search, suggestions, department, year range, highlights and result count, plus field toggles for the artwork, its artist and the artist's other works |
+| Studio | Search, suggestions, department, year range, highlights and page size, plus field toggles for the artwork, its artist and the artist's other works |
 | Live query | The GraphQL document and its variables update on every change, syntax coloured |
 | Send | The query's tokens fly into the gallery along curved paths while a Three.js particle beam crosses the divider |
-| Gallery | Cards render only the fields that came back, labelled with their GraphQL field names |
-| Behind the scenes | One request in, every upstream call out: counts, cache hits, server time, a fan-out diagram and the full call list |
+| Gallery | Cards render only the fields that came back, labelled with their GraphQL field names. Previous and Next page through every result |
+| Behind the scenes | One request in, every upstream call out: counts, cache hits, server time, a fan-out diagram and the full call list. Hover over or focus a failed call to see its exact request and why it failed |
 | Payload | GraphQL response bytes against the raw Met JSON the same works cost |
 | Empty results | Names the filter that emptied a search, shows what each filter allows on its own, and clears it in one click |
 
@@ -26,9 +26,10 @@ inside the document.
 ## The API
 
 ```graphql
-query SearchArtworks($search: String, $first: Int) {
-  artworks(search: $search, first: $first) {
+query SearchArtworks($search: String, $first: Int, $after: String) {
+  artworks(search: $search, first: $first, after: $after) {
     total
+    pageInfo { startCursor hasNextPage endCursor }
     items {
       id
       title
@@ -45,7 +46,8 @@ query SearchArtworks($search: String, $first: Int) {
 
 | Type | Carries |
 |---|---|
-| `Query.artworks` | Search with `departmentId`, `from`, `to`, `highlightsOnly` and `first`. The search term always applies and must visibly appear in each result; filters only narrow it. With no term, a random sample of every work the filters allow. Returns works with an Open Access image only |
+| `Query.artworks` | Search with `departmentId`, `from`, `to`, `highlightsOnly`, the page size `first` and the cursor `after`. The search term always applies and must visibly appear in each result; filters only narrow it. With no term, a random sample of every work the filters allow. Returns works with an Open Access image only |
+| `ArtworkResults.pageInfo` | `startCursor` returns to this page, `endCursor` fetches the next, and `hasNextPage` says whether there is one. See [ADR 0011](docs/adr/0011-cursor-pagination-over-met-positions.md) |
 | `ArtworkResults.diagnosis` | Null unless nothing matched. Then: what the search term finds alone, and for each filter what it allows alone and what would match without it |
 | `Query.artwork` | One work by its Met object ID |
 | `Query.departments` | The curatorial departments, for the `departmentId` filter |
@@ -65,7 +67,9 @@ one is from a cold `sunflowers` query, with its 25 call entries left out:
 ```
 
 Each entry in `calls` records the call's `kind` (`search`, `object` or `departments`), a `label`,
-whether it was `cached`, whether it was `ok`, and its `bytes` and `ms`.
+whether it was `cached`, whether it was `ok`, and its `bytes` and `ms`. A failed call also carries
+`failure`: the exact `url` Querated requested and the `reason` it failed, such as a 404, a
+refusal from the Met's firewall or a timeout. Successful calls leave it out to keep the trace small.
 
 The full schema, with descriptions, is in [`src/server/graphql/type-defs.ts`](src/server/graphql/type-defs.ts).
 
@@ -123,7 +127,7 @@ limit window held in memory.
 | Guard | Detail |
 |---|---|
 | Query limits | Depth 6, cost 1,500 (list sizes priced in), 4 aliases, 8 directives, 600 tokens, via GraphQL Armor, before execution |
-| Argument limits | `first` 1 to 24, `otherWorks(first:)` 1 to 6, search up to 80 characters, years from -10000 to this year |
+| Argument limits | `first` 1 to 24 per page, `otherWorks(first:)` 1 to 6, search up to 80 characters, years from -10000 to this year, and `after` only as a cursor the server issued |
 | Transport | 8 KB request cap, 20 requests a minute per address, POST only in production, no CORS headers |
 | Errors | Unexpected errors are masked; only deliberate `BAD_USER_INPUT` and `UPSTREAM_UNAVAILABLE` messages reach clients |
 | Schema | Introspection and field suggestions are off in production |
@@ -197,7 +201,7 @@ src/
 ├── proxy.ts                Content Security Policy with a per-request nonce
 ├── server/                 Server-only code (model and controller layers)
 │   ├── met/                Met Collection API client, cache, concurrency limit
-│   ├── models/             Untrusted Met records to Artwork and Artist, visible matching
+│   ├── models/             Untrusted Met records to Artwork and Artist, visible matching, page cursors
 │   ├── services/           Searching, sampling, batching and the empty-result diagnosis
 │   ├── graphql/            Schema, resolvers, DataLoaders, plugins, Yoga assembly
 │   ├── departments.ts      The department list the page renders

@@ -15,8 +15,9 @@ and what it costs.
 | [0008](0008-vercel-through-its-git-integration.md) | Vercel through its Git integration | Accepted |
 | [0009](0009-met-images-served-unoptimised.md) | Met images served unoptimised | Accepted |
 | [0010](0010-search-terms-must-visibly-match.md) | Search terms must visibly match | Accepted |
+| [0011](0011-cursor-pagination-over-met-positions.md) | Cursor pagination over Met positions | Accepted |
 
 Superseded records stay in place with their status changed, rather than being deleted.
 
-0003, 0004, 0005, 0006 and 0010 are enforced by tests, the budget script or Lighthouse rather than by
+0003, 0004, 0005, 0006, 0010 and 0011 are enforced by tests, the budget script or Lighthouse rather than by
 review.

@@ -12,8 +12,9 @@ import {
   OTHER_WORKS_COUNT,
   SEARCH_MAX_LENGTH,
 } from "@/lib/contract";
-import { MetUnavailableError } from "@/server/met/client";
+import { MetUnavailableError, SEARCH_WINDOW } from "@/server/met/client";
 import type { Artist, Artwork } from "@/server/models/artwork";
+import { decodeCursor } from "@/server/models/cursor";
 import {
   type ArtworkResults,
   type ArtworkSearch,
@@ -31,6 +32,7 @@ type ArtworksArgs = {
   to?: number | null;
   highlightsOnly?: boolean | null;
   first?: number | null;
+  after?: string | null;
 };
 
 function badInput(message: string): never {
@@ -73,6 +75,15 @@ function highlightFilter(args: ArtworksArgs): SearchFilter[] {
     : [];
 }
 
+function pageStart(after: string | null | undefined): number | null {
+  if (after == null) return null;
+  const offset = decodeCursor(after);
+  if (offset === null || offset >= SEARCH_WINDOW) {
+    badInput("after must be a cursor from pageInfo.");
+  }
+  return offset;
+}
+
 function parseSearch(args: ArtworksArgs): ArtworkSearch {
   const term = (args.search ?? "").trim();
   if (term.length > SEARCH_MAX_LENGTH) {
@@ -82,6 +93,7 @@ function parseSearch(args: ArtworksArgs): ArtworkSearch {
     term,
     first: wholeNumber(args.first, DEFAULT_RESULT_COUNT, 1, MAX_RESULT_COUNT, "first"),
     filters: [...departmentFilter(args), ...yearFilter(args), ...highlightFilter(args)],
+    after: pageStart(args.after),
   };
 }
 

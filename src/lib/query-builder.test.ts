@@ -104,6 +104,14 @@ describe("buildQuery", () => {
     expect(errorsFor({ ...DEFAULT_QUERY_OPTIONS, search: "" })).toEqual([]);
   });
 
+  it("adds the after argument only when turning to a later page", () => {
+    expect(buildQuery(DEFAULT_QUERY_OPTIONS).text).not.toContain("$after");
+    const built = buildQuery({ ...DEFAULT_QUERY_OPTIONS, after: "b2Zmc2V0OjI0" });
+    expect(built.text).toContain("after: $after");
+    expect(built.variables.after).toBe("b2Zmc2V0OjI0");
+    expect(errorsFor({ ...DEFAULT_QUERY_OPTIONS, after: "b2Zmc2V0OjI0" })).toEqual([]);
+  });
+
   it("only selects otherWorks inside artist", () => {
     const built = buildQuery({
       ...DEFAULT_QUERY_OPTIONS,

@@ -33,6 +33,12 @@ export type FilterCheck = {
   matchesWithout: number;
 };
 
+export type PageInfo = {
+  startCursor: string;
+  hasNextPage: boolean;
+  endCursor: string | null;
+};
+
 export type SearchDiagnosis = {
   searchAlone: number;
   filters: FilterCheck[];
@@ -42,6 +48,7 @@ type ArtworksData = {
   artworks: {
     total: number;
     items: ArtworkResult[];
+    pageInfo: PageInfo;
     diagnosis?: SearchDiagnosis | null;
   } | null;
 };
