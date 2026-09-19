@@ -1,0 +1,59 @@
+{
+  "name": "querated",
+  "version": "0.1.0",
+  "description": "Ask The Met in GraphQL. A split-screen studio where a query flies across the screen and builds a gallery in its own shape.",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheDavidKoen/querated.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TheDavidKoen/querated/issues"
+  },
+  "homepage": "https://github.com/TheDavidKoen/querated#readme",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "budget": "node scripts/check-budget.ts",
+    "verify": "pnpm run typecheck && pnpm run lint && pnpm test && pnpm run build && pnpm run budget"
+  },
+  "dependencies": {
+    "@escape.tech/graphql-armor": "^3.2.0",
+    "@gsap/react": "^2.1.2",
+    "dataloader": "^2.2.3",
+    "graphql": "^16.14.2",
+    "graphql-yoga": "^5.24.1",
+    "gsap": "^3.15.0",
+    "lru-cache": "^11.5.2",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "server-only": "^0.0.1",
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@lhci/cli": "^0.15.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.13.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1"
+  }
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Querated</title>
+  <defs>
+    <linearGradient id="q" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff5cc8"/>
+      <stop offset="0.5" stop-color="#ffb454"/>
+      <stop offset="1" stop-color="#5cd6ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#07070d"/>
+  <rect x="13" y="13" width="34" height="34" rx="3" fill="none" stroke="url(#q)" stroke-width="5"/>
+  <path d="M38 38 L52 52" stroke="url(#q)" stroke-width="5" stroke-linecap="round"/>
+</svg>

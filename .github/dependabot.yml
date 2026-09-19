@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Held on 6.x: TypeScript 7 no longer ships the compiler API Next.js type-checks with.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # Held on 16.x: GraphQL Armor depends on graphql 16, and two copies break the schema.
+      - dependency-name: graphql
+        update-types: [version-update:semver-major]

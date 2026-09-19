@@ -1,0 +1,51 @@
+node_modules/
+
+# next.js build output and generated types
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/
+
+# credentials, never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# local assistant instructions and working notes, deliberately untracked
+# next dev writes AGENTS.md and CLAUDE.md when it detects a coding agent
+AGENTS.md
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+/NOTES.md
+/notes.md
+/PLAN.md
+/plan.md
+/TODO.md
+/todo.md
+/notes/
+/plans/
+/scratch/
+/drafts/
+*.local.md
+
+# logs and tool output
+*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage/
+.lighthouseci/
+.biome/
+
+# editor and OS files
+.idea/
+.vscode/
+*.code-workspace
+.history/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
