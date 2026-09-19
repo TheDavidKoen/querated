@@ -1,7 +1,8 @@
-import { formatBytes, formatMs } from "@/lib/format";
+import { formatMs } from "@/lib/format";
 import type { QueryTrace } from "@/lib/trace";
 import { FanOut } from "./FanOut";
 import { PayloadMeter } from "./PayloadMeter";
+import { UpstreamCalls } from "./UpstreamCalls";
 
 type BehindTheScenesProps = {
   trace: QueryTrace;
@@ -48,7 +49,8 @@ export function BehindTheScenes({ trace, dataBytes, runId, animate }: BehindTheS
           {upstream.failed > 0 && (
             <p className="text-signal-failed text-sm">
               {upstream.failed} {upstream.failed === 1 ? "call" : "calls"} failed or found nothing.
-              Those works were left out rather than failing the whole query.
+              Those works were left out rather than failing the whole query. Hover over or select a
+              red call below to see the exact request and why it failed.
             </p>
           )}
         </div>
@@ -60,21 +62,7 @@ export function BehindTheScenes({ trace, dataBytes, runId, animate }: BehindTheS
         <summary className="cursor-pointer px-4 py-3 font-mono text-ink-300 text-xs uppercase tracking-wider hover:text-ink-100">
           Every upstream call ({upstream.total})
         </summary>
-        <ol className="max-h-72 overflow-y-auto border-ink-700 border-t px-4 py-3 font-mono text-xs">
-          {trace.calls.map((call) => (
-            <li
-              key={call.id}
-              className="grid grid-cols-[4.5rem_1fr_auto_auto] gap-3 py-1 text-ink-300"
-            >
-              <span className={call.ok ? "text-ink-400" : "text-signal-failed"}>{call.kind}</span>
-              <span className="truncate text-ink-100">{call.label}</span>
-              <span className={call.cached ? "text-signal-cache" : "text-signal-network"}>
-                {call.cached ? "cache" : formatMs(call.ms)}
-              </span>
-              <span className="w-16 text-right">{formatBytes(call.bytes)}</span>
-            </li>
-          ))}
-        </ol>
+        <UpstreamCalls trace={trace} />
         {trace.truncated && (
           <p className="border-ink-700 border-t px-4 py-2 text-ink-400 text-xs">
             Showing the first {trace.calls.length} calls.

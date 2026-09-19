@@ -72,16 +72,29 @@ export const typeDefs = /* GraphQL */ `
     """
     total: Int!
     """
-    Works with an Open Access image where every word of the search term appears in the title,
-    object type, subjects, artist, culture, medium or classification, in The Met's relevance order.
+    One page of works with an Open Access image where every word of the search term appears in
+    the title, object type, subjects, artist, culture, medium or classification, in The Met's
+    relevance order. A page can hold fewer than first when few works match visibly.
     """
     items: [Artwork!]!
+    "Where this page starts and ends, for returning to it or fetching the next one."
+    pageInfo: PageInfo!
     """
     Why nothing matched. Null whenever total is above zero. When total is zero it asks The Met
     what the search term finds without filters, and what each filter allows on its own and what
     would match without it: one extra search per distinct combination of filters.
     """
     diagnosis: SearchDiagnosis
+  }
+
+  "Cursor pagination over one search. Cursors are opaque and only valid for the same arguments."
+  type PageInfo {
+    "Pass as after, with the same arguments, to fetch this exact page again."
+    startCursor: String!
+    "True when The Met has further results to check after this page."
+    hasNextPage: Boolean!
+    "Pass as after, with the same arguments, to fetch the next page. Null on the last page."
+    endCursor: String
   }
 
   type SearchDiagnosis {
@@ -104,7 +117,8 @@ export const typeDefs = /* GraphQL */ `
     """
     Search the collection. The search term always applies; filters only narrow it. Leave search
     out or empty to take a random sample of every work the filters allow. from and to are
-    years, negative for BCE. Only works with an Open Access image are returned.
+    years, negative for BCE. Only works with an Open Access image are returned. first is the
+    page size, and after, taken from pageInfo.endCursor, fetches the page that follows.
     """
     artworks(
       search: String
@@ -113,6 +127,7 @@ export const typeDefs = /* GraphQL */ `
       to: Int
       highlightsOnly: Boolean = false
       first: Int = ${DEFAULT_RESULT_COUNT}
+      after: String
     ): ArtworkResults!
 
     "One work by its Met object ID."

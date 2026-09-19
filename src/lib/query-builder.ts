@@ -33,6 +33,7 @@ export type QueryOptions = {
   to: number | null;
   highlightsOnly: boolean;
   first: number;
+  after: string | null;
   artworkFields: readonly ArtworkField[];
   includeArtist: boolean;
   artistFields: readonly ArtistField[];
@@ -47,6 +48,7 @@ export const DEFAULT_QUERY_OPTIONS: QueryOptions = {
   to: null,
   highlightsOnly: false,
   first: DEFAULT_RESULT_COUNT,
+  after: null,
   artworkFields: ["date", "medium", "tags", "image", "url"],
   includeArtist: true,
   artistFields: ["nationality", "lifespan"],
@@ -82,6 +84,7 @@ export type QueryVariables = {
   to?: number;
   highlightsOnly?: boolean;
   first: number;
+  after?: string;
 };
 
 export type BuiltQuery = {
@@ -110,6 +113,7 @@ const ARGUMENTS: Argument[] = [
     value: ({ highlightsOnly }) => highlightsOnly || undefined,
   },
   { name: "first", type: "Int", value: ({ first }) => first },
+  { name: "after", type: "String", value: ({ after }) => after ?? undefined },
 ];
 
 const OPERATION_NAME = "SearchArtworks";
@@ -207,6 +211,15 @@ function itemSelection(options: QueryOptions): QueryLine[] {
   );
 }
 
+function pageInfoSelection(): QueryLine[] {
+  return block(
+    2,
+    [token("field", "pageInfo")],
+    [],
+    [field(3, "startCursor"), field(3, "hasNextPage"), field(3, "endCursor")],
+  );
+}
+
 function diagnosisSelection(): QueryLine[] {
   return block(
     2,
@@ -245,6 +258,7 @@ export function buildQuery(options: QueryOptions): BuiltQuery {
       [
         field(2, "total"),
         ...itemSelection(options),
+        ...pageInfoSelection(),
         ...(options.explainEmpty ? diagnosisSelection() : []),
       ],
     ),

@@ -60,7 +60,8 @@ function fakeMet(options: { failSearch?: boolean } = {}) {
         return !highlight || record?.isHighlight === true;
       });
       const limit = Number(url.searchParams.get("limit") ?? 100);
-      return Response.json({ total: ids.length, objectIDs: ids.slice(0, limit) });
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      return Response.json({ total: ids.length, objectIDs: ids.slice(offset, offset + limit) });
     }
     const id = Number(url.pathname.split("/").at(-1));
     const record = OBJECTS.get(id);
@@ -82,7 +83,13 @@ async function execute(
     body: JSON.stringify({ query, variables }),
   });
   return (await response.json()) as {
-    data?: { artworks?: { total: number; items: Array<Record<string, unknown>> } } | null;
+    data?: {
+      artworks?: {
+        total: number;
+        items: Array<Record<string, unknown>>;
+        pageInfo?: { startCursor: string; hasNextPage: boolean; endCursor: string | null };
+      };
+    } | null;
     errors?: Array<{ message: string; extensions?: { code?: string } }>;
     extensions?: Record<string, QueryTrace>;
   };
@@ -250,6 +257,55 @@ describe("the GraphQL API", () => {
     expect(objects).toHaveLength(3);
   });
 
+  it("pages through a search, each page starting where the last one stopped", async () => {
+    const { met } = fakeMet();
+    const yoga = createQueratedYoga({ met, production: true });
+    const query = `query ($after: String) {
+      artworks(search: "sunflowers", first: 2, after: $after) {
+        items { id }
+        pageInfo { startCursor hasNextPage endCursor }
+      }
+    }`;
+
+    const first = (await execute(yoga, query)).data?.artworks;
+    expect(first?.items).toEqual([{ id: "1" }, { id: "3" }]);
+    expect(first?.pageInfo?.hasNextPage).toBe(true);
+
+    const second = (await execute(yoga, query, { after: first?.pageInfo?.endCursor })).data
+      ?.artworks;
+    expect(second?.items).toEqual([{ id: "4" }]);
+    expect(second?.pageInfo).toMatchObject({ hasNextPage: false, endCursor: null });
+
+    const again = (await execute(yoga, query, { after: first?.pageInfo?.startCursor })).data
+      ?.artworks;
+    expect(again?.items).toEqual(first?.items);
+  });
+
+  it("returns to the same random sample through its startCursor", async () => {
+    const { met } = fakeMet();
+    const yoga = createQueratedYoga({ met, production: true });
+    const query = `query ($after: String) {
+      artworks(first: 2, after: $after) { items { id } pageInfo { startCursor } }
+    }`;
+
+    const sample = (await execute(yoga, query)).data?.artworks;
+    const again = (await execute(yoga, query, { after: sample?.pageInfo?.startCursor })).data
+      ?.artworks;
+    expect(again?.items).toEqual(sample?.items);
+  });
+
+  it("refuses a cursor the server did not issue, or one past The Met's search window", async () => {
+    const { met, fetch } = fakeMet();
+    const yoga = createQueratedYoga({ met, production: true });
+    const query = 'query ($after: String) { artworks(search: "cats", after: $after) { total } }';
+    const beyond = Buffer.from("offset:10000").toString("base64url");
+    for (const after of ["offset:5", beyond]) {
+      const result = await execute(yoga, query, { after });
+      expect(result.errors?.[0]?.extensions?.code).toBe("BAD_USER_INPUT");
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("rejects arguments outside the published limits", async () => {
     const { met, fetch } = fakeMet();
     const yoga = createQueratedYoga({ met, production: true });
@@ -278,12 +334,16 @@ describe("the GraphQL API", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("explains an unavailable Met without leaking internals", async () => {
+  it("keeps upstream detail out of errors, and in the trace of the failed call", async () => {
     const { met } = fakeMet({ failSearch: true });
     const yoga = createQueratedYoga({ met, production: true });
     const result = await execute(yoga, 'query { artworks(search: "cats") { total } }');
     expect(result.errors?.[0]?.extensions?.code).toBe("UPSTREAM_UNAVAILABLE");
-    expect(JSON.stringify(result)).not.toContain("503");
+    expect(JSON.stringify(result.errors)).not.toContain("503");
+    expect(result.extensions?.[TRACE_EXTENSION]?.calls[0]?.failure).toEqual({
+      url: expect.stringContaining("/v1.1/search?q=cats"),
+      reason: "503 from the Met.",
+    });
   });
 
   it("blocks introspection in production and allows it in development", async () => {

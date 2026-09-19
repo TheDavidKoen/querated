@@ -32,7 +32,8 @@ Yoga: parse ─ Armor limits ─ validate ─ execute                       │
       │                                                               │
       ├─ Query.artworks ─ parseSearch ─ searchArtworks                │
       │        ├─ met.search (v1.1), after a count when empty         │
-      │        └─ loaders.artwork.loadMany per batch ─ matchesTerm    │
+      │        ├─ loaders.artwork.loadMany per batch ─ matchesTerm    │
+      │        └─ pageInfo: where the page starts and stops           │
       ├─ ArtworkResults.diagnosis ─ diagnoseEmpty, only when empty    │
       ├─ Artist.otherWorks ─ otherWorksBy ─ loaders.artistWorkIds     │
       │                                                               │
@@ -93,6 +94,7 @@ downloaded calling The Met directly", and that browser has no cache of ours.
 | Add a filter | `contract.ts` for its limit, `type-defs.ts`, `resolvers.ts` to parse it, `met/client.ts` for the search parameter, `query-builder.ts`, `FilterFields.tsx`, and `CLEARED` in `Studio.tsx` |
 | Change how a search term matches | `models/search-match.ts`, with a note in ADR 0010 |
 | Change batching or sampling | `services/artworks.ts` |
+| Change pagination | `services/artworks.ts` and `models/cursor.ts`, with a note in ADR 0011 |
 | Change a limit | `contract.ts` only |
 | Change the Armor limits | `plugins.ts`, then `yoga.test.ts` proves the largest studio query still passes |
 | Allow a new image or link host | `models/artwork.ts` and the Content Security Policy in `proxy.ts` together, with a note in ADR 0006 |

@@ -101,7 +101,7 @@ export function FilterFields({ options, departments, onChange }: FilterFieldsPro
 
       <fieldset className="sm:col-span-2">
         <legend className="mb-2 text-ink-300 text-sm">
-          How many works <ArgumentName>first</ArgumentName>
+          Works per page <ArgumentName>first</ArgumentName>
         </legend>
         <div className="inline-flex rounded-lg border border-ink-600 p-1">
           {RESULT_COUNTS.map((count) => (

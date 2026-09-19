@@ -17,15 +17,17 @@ type GalleryPanelProps = {
   outcome: QueryOutcome | null;
   variables: QueryVariables | null;
   runId: number;
+  page: number;
   animate: boolean;
   departments: DepartmentOption[];
   onClear: (argumentNames: string[]) => void;
+  onPage: (direction: "previous" | "next") => void;
 };
 
 const GRID = "grid gap-6 sm:grid-cols-2 xl:grid-cols-3";
 const IDLE_FRAMES = 6;
 
-function statusText(phase: Phase, outcome: QueryOutcome | null): string {
+function statusText(phase: Phase, outcome: QueryOutcome | null, page: number): string {
   switch (phase) {
     case "idle":
       return "Waiting for a query";
@@ -38,7 +40,11 @@ function statusText(phase: Phase, outcome: QueryOutcome | null): string {
     case "done": {
       const artworks = outcome?.data?.artworks;
       if (!artworks) return "";
-      return `${artworks.items.length} shown of ${artworks.total.toLocaleString("en-GB")} matches`;
+      const count = artworks.items.length;
+      const paged = page > 1 || artworks.pageInfo.hasNextPage;
+      const shown = `${count} visible ${count === 1 ? "match" : "matches"}${paged ? " on this page" : ""}`;
+      const summary = `${shown}, from the Met's ${artworks.total.toLocaleString("en-GB")}`;
+      return page > 1 ? `Page ${page}, ${summary}` : summary;
     }
   }
 }
@@ -53,6 +59,44 @@ function Frames({ count, pending }: { count: number; pending: boolean }) {
         />
       ))}
     </div>
+  );
+}
+
+const PAGE_BUTTON =
+  "rounded-md border border-wall-300 px-4 py-2 font-mono text-sm hover:bg-wall-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
+
+function Pagination({
+  page,
+  hasNextPage,
+  onPage,
+}: {
+  page: number;
+  hasNextPage: boolean;
+  onPage: (direction: "previous" | "next") => void;
+}) {
+  return (
+    <nav
+      aria-label="Result pages"
+      className="flex items-center justify-between gap-4 border-wall-200 border-t pt-6"
+    >
+      <button
+        type="button"
+        disabled={page === 1}
+        onClick={() => onPage("previous")}
+        className={PAGE_BUTTON}
+      >
+        Previous
+      </button>
+      <p className="font-mono text-wall-700 text-xs">Page {page}</p>
+      <button
+        type="button"
+        disabled={!hasNextPage}
+        onClick={() => onPage("next")}
+        className={PAGE_BUTTON}
+      >
+        Next
+      </button>
+    </nav>
   );
 }
 
@@ -82,9 +126,11 @@ export function GalleryPanel({
   outcome,
   variables,
   runId,
+  page,
   animate,
   departments,
   onClear,
+  onPage,
 }: GalleryPanelProps) {
   useGSAP(
     () => {
@@ -119,7 +165,7 @@ export function GalleryPanel({
           The gallery
         </h2>
         <p role="status" className="font-mono text-wall-700 text-xs">
-          {statusText(phase, outcome)}
+          {statusText(phase, outcome, page)}
         </p>
       </header>
 
@@ -142,7 +188,12 @@ export function GalleryPanel({
         {phase === "done" && artworks && (
           <div className="space-y-6">
             {outcome && outcome.errors.length > 0 && <Errors errors={outcome.errors} />}
-            {artworks.items.length === 0 && variables ? (
+            {artworks.items.length === 0 && page > 1 ? (
+              <p className="max-w-lg text-wall-700 leading-relaxed">
+                None of the works checked for this page visibly match your search. Next carries on
+                further through the Met's results.
+              </p>
+            ) : artworks.items.length === 0 && variables ? (
               <EmptyResult
                 total={artworks.total}
                 failedCalls={outcome?.trace?.upstream.failed ?? 0}
@@ -157,6 +208,18 @@ export function GalleryPanel({
                   <ArtworkCard key={artwork.id} artwork={artwork} />
                 ))}
               </div>
+            )}
+            {artworks.items.length > 0 &&
+              variables &&
+              artworks.items.length < variables.first &&
+              artworks.pageInfo.hasNextPage && (
+                <p className="max-w-lg text-sm text-wall-700 leading-relaxed">
+                  Only {artworks.items.length} of the works checked for this page visibly match.
+                  Next keeps looking further through the Met's results.
+                </p>
+              )}
+            {(page > 1 || artworks.pageInfo.hasNextPage) && (
+              <Pagination page={page} hasNextPage={artworks.pageInfo.hasNextPage} onPage={onPage} />
             )}
           </div>
         )}
