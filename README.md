@@ -252,6 +252,16 @@ Vercel builds and deploys through its own GitHub integration: production from `m
 for every pull request. No deploy token is stored in GitHub. See
 [ADR 0008](docs/adr/0008-vercel-through-its-git-integration.md).
 
+The project needs two environment variables and nothing else:
+
+| Variable | Value | Why |
+|---|---|---|
+| `ENABLE_EXPERIMENTAL_COREPACK` | `1` | Vercel's own pnpm stops at 10. Corepack installs the pnpm 11 pinned in `packageManager` |
+| `NEXT_PUBLIC_SITE_URL` | The production address | The canonical URL in metadata, the sitemap and `robots.txt`. It is inlined at build time, so a change needs a redeploy |
+
+The framework preset, build command and Node.js version are detected: Next.js, `pnpm build`
+and 24.x from `engines.node`.
+
 Versions are cut by tag. Bump `version` in `package.json` and add a matching `CHANGELOG.md`
 entry in a pull request, then after it merges:
 
