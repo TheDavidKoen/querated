@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, JetBrains_Mono } from "next/font/google";
+import { DockToggle } from "@/components/DockToggle";
+import { SiteBubble } from "@/components/SiteBubble";
+import { StackBubble } from "@/components/StackBubble";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -56,8 +59,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-GB" className={`${display.variable} ${mono.variable}`}>
-      <body>{children}</body>
+    <html lang="en-GB" className={`${display.variable} ${mono.variable}`} data-dock="closed">
+      <body>
+        {children}
+        <DockToggle />
+        <StackBubble />
+        <SiteBubble />
+      </body>
     </html>
   );
 }

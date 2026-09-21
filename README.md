@@ -18,6 +18,7 @@ ones the cache answered, and how many bytes GraphQL saved.
 | Behind the scenes | One request in, every upstream call out: counts, cache hits, server time, a fan-out diagram and the full call list. Hover over or focus a failed call to see its exact request and why it failed |
 | Payload | GraphQL response bytes against the raw Met JSON the same works cost |
 | Empty results | Names the filter that emptied a search, shows what each filter allows on its own, and clears it in one click |
+| Dock | A tech stack sheet giving the reason and ADR behind each choice, and a link back to my site |
 
 The one endpoint is `POST /api/graphql`. What changes between sends is the query, so the query
 is what flies. Filters appear as arguments, and everything you type travels as a variable, never
@@ -211,10 +212,14 @@ src/
 │   ├── contract.ts         Limits shared by the API and the studio
 │   ├── query-builder.ts    Builds the query as tokens and variables
 │   ├── graphql-client.ts   The studio's one fetch
+│   ├── dock.ts             The dock's copy and the tech stack entries
 │   └── site.ts             Title, description and canonical address
 ├── components/             React components, one concern each
 ├── animation/              GSAP flight and the Three.js beam
 └── hooks/                  Reduced motion
+public/
+├── stack/                Tech stack logos from Simple Icons (CC0)
+└── d-mark.svg, plus.svg  Dock bubble icons
 scripts/
 └── check-budget.ts         Performance budget and bundle guards
 docs/
