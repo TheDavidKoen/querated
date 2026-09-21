@@ -10,10 +10,12 @@ All notable changes to Querated are recorded here. The format follows
 
 - Cursor pagination: `after` and `pageInfo` on `artworks`, with Previous and Next in the gallery
 - The exact request and failure reason for every failed upstream call, shown in a bubble on hover or focus
+- The dock: a tech stack sheet with the reason and ADR behind each choice, and a link back to my site
 
 ### Changed
 
 - Every page checks up to three batches before settling for fewer works, with or without a search term
+- The new Querated mark in the favicon, the Apple touch icon and the share image
 
 ## [0.1.0] - 2026-09-18
 
